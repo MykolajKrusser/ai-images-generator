@@ -1,0 +1,15 @@
+# Core dependencies in installation order for best compatibility
+torch>=2.0.0
+accelerator>=0.25.0
+huggingface-hub==0.20.2
+diffusers[torch]==0.26.3
+transformers[torch]==4.38.2
+
+# Web API dependencies
+fastapi==0.108.0
+uvicorn==0.25.0
+python-multipart==0.0.6
+pydantic>=2.0.0
+
+# Image processing
+Pillow>=10.0.0

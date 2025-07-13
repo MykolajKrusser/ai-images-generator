@@ -1,0 +1,11 @@
+**/__pycache__
+**/.git
+**/.env
+**/.venv
+**/.venv312
+**/venv
+**/venv_py312
+**/.pytest_cache
+**/.coverage
+**/.DS_Store
+**/Thumbs.db
