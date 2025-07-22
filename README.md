@@ -1,311 +1,131 @@
-<!---
-Copyright 2022 - The HuggingFace Team. All rights reserved.
+# AI Image Generation API
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+A FastAPI application that provides an API for generating images using the Hugging Face Diffusers library and Stable Diffusion models.
 
-    http://www.apache.org/licenses/LICENSE-2.0
+## Requirements
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
+- Python 3.10
+- Docker (for containerized deployment)
 
-<p align="center">
-    <br>
-    <img src="https://raw.githubusercontent.com/huggingface/diffusers/main/docs/source/en/imgs/diffusers_library.jpg" width="400"/>
-    <br>
-<p>
-<p align="center">
-    <a href="https://github.com/huggingface/diffusers/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/huggingface/datasets.svg?color=blue"></a>
-    <a href="https://github.com/huggingface/diffusers/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/huggingface/diffusers.svg"></a>
-    <a href="https://pepy.tech/project/diffusers"><img alt="GitHub release" src="https://static.pepy.tech/badge/diffusers/month"></a>
-    <a href="CODE_OF_CONDUCT.md"><img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg"></a>
-    <a href="https://twitter.com/diffuserslib"><img alt="X account" src="https://img.shields.io/twitter/url/https/twitter.com/diffuserslib.svg?style=social&label=Follow%20%40diffuserslib"></a>
-</p>
+## Local Development
 
-🤗 Diffusers is the go-to library for state-of-the-art pretrained diffusion models for generating images, audio, and even 3D structures of molecules. Whether you're looking for a simple inference solution or training your own diffusion models, 🤗 Diffusers is a modular toolbox that supports both. Our library is designed with a focus on [usability over performance](https://huggingface.co/docs/diffusers/conceptual/philosophy#usability-over-performance), [simple over easy](https://huggingface.co/docs/diffusers/conceptual/philosophy#simple-over-easy), and [customizability over abstractions](https://huggingface.co/docs/diffusers/conceptual/philosophy#tweakable-contributorfriendly-over-abstraction).
-
-🤗 Diffusers offers three core components:
-
-- State-of-the-art [diffusion pipelines](https://huggingface.co/docs/diffusers/api/pipelines/overview) that can be run in inference with just a few lines of code.
-- Interchangeable noise [schedulers](https://huggingface.co/docs/diffusers/api/schedulers/overview) for different diffusion speeds and output quality.
-- Pretrained [models](https://huggingface.co/docs/diffusers/api/models/overview) that can be used as building blocks, and combined with schedulers, for creating your own end-to-end diffusion systems.
-
-## Installation
-
-We recommend installing 🤗 Diffusers in a virtual environment from PyPI or Conda. For more details about installing [PyTorch](https://pytorch.org/get-started/locally/) and [Flax](https://flax.readthedocs.io/en/latest/#installation), please refer to their official documentation.
-
-### PyTorch
-
-With `pip` (official package):
+1. Create a virtual environment:
 
 ```bash
-pip install --upgrade diffusers[torch]
+python -m virtualenv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-With `conda` (maintained by the community):
-
-```sh
-conda install -c conda-forge diffusers
-```
-
-### Flax
-
-With `pip` (official package):
+2. Install dependencies:
 
 ```bash
-pip install --upgrade diffusers[flax]
+pip install -r requirements.txt
 ```
 
-### Apple Silicon (M1/M2) support
-# Diffusers API
-
-A FastAPI application for generating images using the Stable Diffusion model.
-
-## Setup and Installation
-
-### Python Version Compatibility
-
-**IMPORTANT**: Diffusers and its dependencies are not fully compatible with Python 3.13 yet [[1]](https://pyreadiness.org/3.13/). You have several options:
-
-1. **Recommended**: Use Python 3.12 with our compatibility script:
-   ```
-   python run_with_python312.py
-   ```
-   This script will create a Python 3.12 virtual environment and install all required dependencies.
-
-2. **Docker**: Use Docker to avoid Python version issues:
-   ```
-   # Windows
-   run_docker.bat
-
-   # Linux/Mac
-   ./run_docker.sh
+   Note: If you encounter any issues with package installation, try updating pip first:
+   ```bash
+   pip install --upgrade pip
    ```
 
-3. **Manual**: If you want to try with Python 3.13 anyway:
+3. Run the application:
+
+```bash
+# First, use the fix_project.py script to ensure proper setup
+python fix_project.py
+
+# Then run the application using one of these methods:
+
+# Option 1: Use the run.py script from the project root
+python run.py
+
+# Option 2: Run directly with uvicorn module (preferred)
+python -m uvicorn app.main:app --reload
+```
+
+The API will be available at http://localhost:8000
+
+## API Endpoints
+
+- `GET /` - Health check
+- `POST /generate` - Generate an image based on a text prompt
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "a photo of a cat in space", "width": 512, "height": 512}'
+```
+
+## Docker Deployment
+
+1. Build the Docker image:
+
+```bash
+docker build -t ai-image-generator .
+```
+
+2. Run the container:
+
+```bash
+docker run -p 8000:8000 ai-image-generator
+```
+
+## Deploying to AWS EC2
+
+1. Launch an EC2 instance with GPU support (e.g., g4dn.xlarge)
+2. Use the provided setup script for easy deployment:
+   ```bash
+   chmod +x setup-ec2.sh
+   sudo ./setup-ec2.sh
    ```
-   pip install -r requirements.txt
-   python fix_huggingface.py
-   python app.py
-   ```
+
+Alternatively, follow these manual steps:
+1. Install Docker on the instance
+2. Install NVIDIA drivers and NVIDIA Container Toolkit
+3. Clone this repository and build the Docker image
+4. Run the container
+
+For GPU support on EC2, you'll need:
+- NVIDIA drivers
+- NVIDIA Container Toolkit
+- A modified Dockerfile that uses the PyTorch CUDA base image
+
+## Configuration
+
+The application can be configured using environment variables:
+
+- `MODEL_ID`: The Hugging Face model ID to use (default: "runwayml/stable-diffusion-v1-5")
+- `USE_GPU`: Set to "1" to enable GPU acceleration (default: auto-detected)
+
+## Notes
+
+- The first request will be slow as it downloads and loads the model
+- For production use, consider using a persistent storage solution for caching models
+- When deploying to EC2, ensure your instance has enough memory for the model
 
 ## Troubleshooting
 
-### If you see "Model not loaded yet" error:
+### Package Compatibility Issues
 
-This means the Stable Diffusion model could not be loaded during application startup. To fix this:
+If you encounter errors related to package compatibility (especially with `huggingface_hub`), use the provided setup script:
 
-1. **Python 3.13 Issues**: The most likely cause is Python 3.13 incompatibility with safetensors and huggingface-hub [[2]](https://github.com/huggingface/transformers/issues/35443). Use the Python 3.12 solution above.
-
-2. **`cached_download` Error**: If you see `cannot import name 'cached_download' from 'huggingface_hub'` error [[3]](https://stackoverflow.com/questions/79374322/importerror-cannot-import-name-cached-download-from-huggingface-hub), run these fixes in order:
-   ```
-   python fix_huggingface.py
-   python diffusers_patch.py
-   ```
-   This is due to diffusers trying to use a deprecated function from older huggingface-hub versions.
-
-3. **Dependency Issues**: If using Python 3.12 and still having problems:
-   ```
-   python fix_huggingface.py
-   ```
-
-4. **Check application health**:
-   ```
-   GET /health
-   ```
-   This will show you detailed information about loaded dependencies and any import errors.
-
-### Common Issues:
-
-- **Dependency conflicts**: The `fix_huggingface.py` script will install compatible versions of `huggingface-hub` and `diffusers`
-- **Memory issues**: Stable Diffusion requires significant RAM and GPU memory
-- **Missing models**: The application will attempt to download the model on first run
-
-### Check Application Health
-
-You can check the application health and see detailed information about loaded dependencies:
-
-```
-GET /health
+```bash
+python app_setup.py
 ```
 
-If the status shows "initializing" instead of "healthy", the model is not yet loaded correctly.
-Please refer to the [How to use Stable Diffusion in Apple Silicon](https://huggingface.co/docs/diffusers/optimization/mps) guide.
+This script installs the correct version of `huggingface_hub` (0.16.4) which is compatible with diffusers 0.21.4.
 
-## Quickstart
+### "Numpy is not available" Error
 
-Generating outputs is super easy with 🤗 Diffusers. To generate an image from text, use the `from_pretrained` method to load any pretrained diffusion model (browse the [Hub](https://huggingface.co/models?library=diffusers&sort=downloads) for 30,000+ checkpoints):
+If you get an error message saying "Numpy is not available" when accessing the API, run the quick fix script:
 
-```python
-from diffusers import DiffusionPipeline
-import torch
-
-pipeline = DiffusionPipeline.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", torch_dtype=torch.float16)
-pipeline.to("cuda")
-pipeline("An image of a squirrel in Picasso style").images[0]
+```bash
+python quick_fix.py
 ```
 
-You can also dig into the models and schedulers toolbox to build your own diffusion system:
+This will install numpy version 1.24.3 which is compatible with the other dependencies.
 
-```python
-from diffusers import DDPMScheduler, UNet2DModel
-from PIL import Image
-import torch
+### Import Errors
 
-scheduler = DDPMScheduler.from_pretrained("google/ddpm-cat-256")
-model = UNet2DModel.from_pretrained("google/ddpm-cat-256").to("cuda")
-scheduler.set_timesteps(50)
-
-sample_size = model.config.sample_size
-noise = torch.randn((1, 3, sample_size, sample_size), device="cuda")
-input = noise
-
-for t in scheduler.timesteps:
-    with torch.no_grad():
-        noisy_residual = model(input, t).sample
-        prev_noisy_sample = scheduler.step(noisy_residual, t, input).prev_sample
-        input = prev_noisy_sample
-
-image = (input / 2 + 0.5).clamp(0, 1)
-image = image.cpu().permute(0, 2, 3, 1).numpy()[0]
-image = Image.fromarray((image * 255).round().astype("uint8"))
-image
-```
-
-Check out the [Quickstart](https://huggingface.co/docs/diffusers/quicktour) to launch your diffusion journey today!
-
-## How to navigate the documentation
-
-| **Documentation**                                                   | **What can I learn?**                                                                                                                                                                           |
-|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Tutorial](https://huggingface.co/docs/diffusers/tutorials/tutorial_overview)                                                            | A basic crash course for learning how to use the library's most important features like using models and schedulers to build your own diffusion system, and training your own diffusion model.  |
-| [Loading](https://huggingface.co/docs/diffusers/using-diffusers/loading)                                                             | Guides for how to load and configure all the components (pipelines, models, and schedulers) of the library, as well as how to use different schedulers.                                         |
-| [Pipelines for inference](https://huggingface.co/docs/diffusers/using-diffusers/overview_techniques)                                             | Guides for how to use pipelines for different inference tasks, batched generation, controlling generated outputs and randomness, and how to contribute a pipeline to the library.               |
-| [Optimization](https://huggingface.co/docs/diffusers/optimization/fp16)                                                        | Guides for how to optimize your diffusion model to run faster and consume less memory.                                                                                                          |
-| [Training](https://huggingface.co/docs/diffusers/training/overview) | Guides for how to train a diffusion model for different tasks with different training techniques.                                                                                               |
-## Contribution
-
-We ❤️  contributions from the open-source community!
-If you want to contribute to this library, please check out our [Contribution guide](https://github.com/huggingface/diffusers/blob/main/CONTRIBUTING.md).
-You can look out for [issues](https://github.com/huggingface/diffusers/issues) you'd like to tackle to contribute to the library.
-- See [Good first issues](https://github.com/huggingface/diffusers/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) for general opportunities to contribute
-- See [New model/pipeline](https://github.com/huggingface/diffusers/issues?q=is%3Aopen+is%3Aissue+label%3A%22New+pipeline%2Fmodel%22) to contribute exciting new diffusion models / diffusion pipelines
-- See [New scheduler](https://github.com/huggingface/diffusers/issues?q=is%3Aopen+is%3Aissue+label%3A%22New+scheduler%22)
-
-Also, say 👋 in our public Discord channel <a href="https://discord.gg/G7tWnz98XR"><img alt="Join us on Discord" src="https://img.shields.io/discord/823813159592001537?color=5865F2&logo=discord&logoColor=white"></a>. We discuss the hottest trends about diffusion models, help each other with contributions, personal projects or just hang out ☕.
-
-
-## Popular Tasks & Pipelines
-
-<table>
-  <tr>
-    <th>Task</th>
-    <th>Pipeline</th>
-    <th>🤗 Hub</th>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Unconditional Image Generation</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/ddpm"> DDPM </a></td>
-    <td><a href="https://huggingface.co/google/ddpm-ema-church-256"> google/ddpm-ema-church-256 </a></td>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Text-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/text2img">Stable Diffusion Text-to-Image</a></td>
-      <td><a href="https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5"> stable-diffusion-v1-5/stable-diffusion-v1-5 </a></td>
-  </tr>
-  <tr>
-    <td>Text-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/unclip">unCLIP</a></td>
-      <td><a href="https://huggingface.co/kakaobrain/karlo-v1-alpha"> kakaobrain/karlo-v1-alpha </a></td>
-  </tr>
-  <tr>
-    <td>Text-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/deepfloyd_if">DeepFloyd IF</a></td>
-      <td><a href="https://huggingface.co/DeepFloyd/IF-I-XL-v1.0"> DeepFloyd/IF-I-XL-v1.0 </a></td>
-  </tr>
-  <tr>
-    <td>Text-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/kandinsky">Kandinsky</a></td>
-      <td><a href="https://huggingface.co/kandinsky-community/kandinsky-2-2-decoder"> kandinsky-community/kandinsky-2-2-decoder </a></td>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Text-guided Image-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/controlnet">ControlNet</a></td>
-      <td><a href="https://huggingface.co/lllyasviel/sd-controlnet-canny"> lllyasviel/sd-controlnet-canny </a></td>
-  </tr>
-  <tr>
-    <td>Text-guided Image-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/pix2pix">InstructPix2Pix</a></td>
-      <td><a href="https://huggingface.co/timbrooks/instruct-pix2pix"> timbrooks/instruct-pix2pix </a></td>
-  </tr>
-  <tr>
-    <td>Text-guided Image-to-Image</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/img2img">Stable Diffusion Image-to-Image</a></td>
-      <td><a href="https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5"> stable-diffusion-v1-5/stable-diffusion-v1-5 </a></td>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Text-guided Image Inpainting</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/inpaint">Stable Diffusion Inpainting</a></td>
-      <td><a href="https://huggingface.co/runwayml/stable-diffusion-inpainting"> runwayml/stable-diffusion-inpainting </a></td>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Image Variation</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/image_variation">Stable Diffusion Image Variation</a></td>
-      <td><a href="https://huggingface.co/lambdalabs/sd-image-variations-diffusers"> lambdalabs/sd-image-variations-diffusers </a></td>
-  </tr>
-  <tr style="border-top: 2px solid black">
-    <td>Super Resolution</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/upscale">Stable Diffusion Upscale</a></td>
-      <td><a href="https://huggingface.co/stabilityai/stable-diffusion-x4-upscaler"> stabilityai/stable-diffusion-x4-upscaler </a></td>
-  </tr>
-  <tr>
-    <td>Super Resolution</td>
-    <td><a href="https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/latent_upscale">Stable Diffusion Latent Upscale</a></td>
-      <td><a href="https://huggingface.co/stabilityai/sd-x2-latent-upscaler"> stabilityai/sd-x2-latent-upscaler </a></td>
-  </tr>
-</table>
-
-## Popular libraries using 🧨 Diffusers
-
-- https://github.com/microsoft/TaskMatrix
-- https://github.com/invoke-ai/InvokeAI
-- https://github.com/InstantID/InstantID
-- https://github.com/apple/ml-stable-diffusion
-- https://github.com/Sanster/lama-cleaner
-- https://github.com/IDEA-Research/Grounded-Segment-Anything
-- https://github.com/ashawkey/stable-dreamfusion
-- https://github.com/deep-floyd/IF
-- https://github.com/bentoml/BentoML
-- https://github.com/bmaltais/kohya_ss
-- +14,000 other amazing GitHub repositories 💪
-
-Thank you for using us ❤️.
-
-## Credits
-
-This library concretizes previous work by many different authors and would not have been possible without their great research and implementations. We'd like to thank, in particular, the following implementations which have helped us in our development and without which the API could not have been as polished today:
-
-- @CompVis' latent diffusion models library, available [here](https://github.com/CompVis/latent-diffusion)
-- @hojonathanho original DDPM implementation, available [here](https://github.com/hojonathanho/diffusion) as well as the extremely useful translation into PyTorch by @pesser, available [here](https://github.com/pesser/pytorch_diffusion)
-- @ermongroup's DDIM implementation, available [here](https://github.com/ermongroup/ddim)
-- @yang-song's Score-VE and Score-VP implementations, available [here](https://github.com/yang-song/score_sde_pytorch)
-
-We also want to thank @heejkoo for the very helpful overview of papers, code and resources on diffusion models, available [here](https://github.com/heejkoo/Awesome-Diffusion-Models) as well as @crowsonkb and @rromb for useful discussions and insights.
-
-## Citation
-
-```bibtex
-@misc{von-platen-etal-2022-diffusers,
-  author = {Patrick von Platen and Suraj Patil and Anton Lozhkov and Pedro Cuenca and Nathan Lambert and Kashif Rasul and Mishig Davaadorj and Dhruv Nair and Sayak Paul and William Berman and Yiyi Xu and Steven Liu and Thomas Wolf},
-  title = {Diffusers: State-of-the-art diffusion models},
-  year = {2022},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/huggingface/diffusers}}
-}
-```
+If you see import errors when running the application, make sure you're running it from the project root directory. The application is structured as a Python package, so the import paths are relative to the project root.
