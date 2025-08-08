@@ -34,3 +34,30 @@ def resize_image(image: Image.Image, max_size: int = 1024) -> Image.Image:
         new_width = int(width * (max_size / height))
 
     return image.resize((new_width, new_height), Image.LANCZOS)
+
+
+def optimize_vae_encode_decode(pipe, device: str):
+    if device == "cuda":
+        # Move VAE to CPU during encode/decode to save VRAM
+        # This is beneficial for larger images
+        vae = pipe.vae
+
+        original_forward = vae.forward
+
+        def forward_with_optimization(*args, **kwargs):
+            # Move VAE to CPU temporarily
+            vae_device = vae.device
+            vae.to("cpu")
+            # Clear CUDA cache
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            # Run forward pass
+            output = original_forward(*args, **kwargs)
+
+            # Move VAE back to original device
+            vae.to(vae_device)
+            return output
+
+        # Replace forward method
+        vae.forward = forward_with_optimization

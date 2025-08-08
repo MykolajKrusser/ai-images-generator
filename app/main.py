@@ -31,9 +31,10 @@ class ImageGenerationRequest(BaseModel):
     negative_prompt: Optional[str] = None
     width: int = 512
     height: int = 512
-    num_inference_steps: int = 50
+    num_inference_steps: int = 30  # Reduced default for better performance
     guidance_scale: float = 7.5
     seed: Optional[int] = None
+    optimize_memory: bool = True  # Enable memory optimizations
 
 def load_model():
     global pipe
@@ -43,9 +44,21 @@ def load_model():
         try:
             pipe = StableDiffusionPipeline.from_pretrained(
                 model_id,
-                torch_dtype=torch.float16 if device == "cuda" else torch.float32
+                torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                safety_checker=None  # Disable safety checker for performance
             )
             pipe = pipe.to(device)
+
+            # Apply optimizations for GPU
+            if device == "cuda":
+                pipe.enable_attention_slicing()
+                # Try to enable xformers if available
+                try:
+                    pipe.enable_xformers_memory_efficient_attention()
+                    logger.info("Using xformers for memory efficient attention")
+                except Exception as e:
+                    logger.warning(f"Could not enable xformers: {e}")
+
             logger.info("Model loaded successfully")
         except Exception as e:
             logger.error(f"Error loading model: {str(e)}")
@@ -67,6 +80,16 @@ async def generate_image(request: ImageGenerationRequest, background_tasks: Back
         # Set random seed if provided
         generator = setup_seed(request.seed, device)
 
+        # Use memory efficient attention if on GPU
+        if device == "cuda":
+            pipe.enable_attention_slicing()
+
+        # Apply memory optimizations if requested
+        if request.optimize_memory and device == "cuda":
+            from app.utils import optimize_vae_encode_decode
+            optimize_vae_encode_decode(pipe, device)
+            torch.cuda.empty_cache()  # Clear GPU memory
+
         # Generate the image
         image = pipe(
             prompt=request.prompt,
@@ -75,8 +98,13 @@ async def generate_image(request: ImageGenerationRequest, background_tasks: Back
             height=request.height,
             num_inference_steps=request.num_inference_steps,
             guidance_scale=request.guidance_scale,
-            generator=generator
+            generator=generator,
+            num_images_per_prompt=1
         ).images[0]
+
+        # Clear GPU memory after generation
+        if device == "cuda":
+            torch.cuda.empty_cache()
 
         # Convert image to bytes
         img_byte_arr = io.BytesIO()
