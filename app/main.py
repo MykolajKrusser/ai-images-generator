@@ -11,10 +11,16 @@ from diffusers import StableDiffusionPipeline
 
 # Try relative import first, fall back to absolute import
 try:
-    from .utils import get_device, get_model_id, setup_seed
+    from .utils import get_device, setup_seed
+    from .models import get_model_id, get_available_models, get_model_trigger_words
 except ImportError:
     # When running the file directly
-    from utils import get_device, get_model_id, setup_seed
+    # Add the parent directory to sys.path to support running from app directory
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from app.utils import get_device, setup_seed
+    from app.models import get_model_id, get_available_models, get_model_trigger_words
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI Image Generation API")
 
-# Will be loaded on first request
-pipe = None
+# Model management
+loaded_models = {}  # Dictionary to store loaded model pipelines
 device = get_device()
 
 class ImageGenerationRequest(BaseModel):
@@ -35,34 +41,59 @@ class ImageGenerationRequest(BaseModel):
     guidance_scale: float = 7.5
     seed: Optional[int] = None
     optimize_memory: bool = True  # Enable memory optimizations
+    style: Optional[str] = None  # Style name from predefined styles
+    model: Optional[str] = None  # Model key from predefined models
 
-def load_model():
-    global pipe
-    if pipe is None:
-        model_id = get_model_id()
-        logger.info(f"Loading Stable Diffusion model {model_id} on {device}...")
-        try:
-            pipe = StableDiffusionPipeline.from_pretrained(
-                model_id,
-                torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-                safety_checker=None  # Disable safety checker for performance
-            )
-            pipe = pipe.to(device)
+    # For custom styles
+    prompt_prefix: Optional[str] = None
+    prompt_suffix: Optional[str] = None
 
-            # Apply optimizations for GPU
-            if device == "cuda":
-                pipe.enable_attention_slicing()
-                # Try to enable xformers if available
-                try:
-                    pipe.enable_xformers_memory_efficient_attention()
-                    logger.info("Using xformers for memory efficient attention")
-                except Exception as e:
-                    logger.warning(f"Could not enable xformers: {e}")
+def load_model(model_key=None):
+    """Load a Stable Diffusion model pipeline.
 
-            logger.info("Model loaded successfully")
-        except Exception as e:
-            logger.error(f"Error loading model: {str(e)}")
-            raise
+    Args:
+        model_key: Key identifying which model to load from MODEL_DEFINITIONS
+
+    Returns:
+        The loaded pipeline
+    """
+    # Get the appropriate model ID
+    model_id = get_model_id(model_key)
+
+    # Check if this specific model is already loaded
+    if model_id in loaded_models:
+        logger.info(f"Using already loaded model: {model_id}")
+        return loaded_models[model_id]
+
+    # Load the model if not already loaded
+    logger.info(f"Loading Stable Diffusion model {model_id} on {device}...")
+    try:
+        # Load the pipeline
+        pipe = StableDiffusionPipeline.from_pretrained(
+            model_id,
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            safety_checker=None  # Disable safety checker for performance
+        )
+        pipe = pipe.to(device)
+
+        # Apply optimizations for GPU
+        if device == "cuda":
+            pipe.enable_attention_slicing()
+            # Try to enable xformers if available
+            try:
+                pipe.enable_xformers_memory_efficient_attention()
+                logger.info("Using xformers for memory efficient attention")
+            except Exception as e:
+                logger.warning(f"Could not enable xformers: {e}")
+
+        # Store the loaded model
+        loaded_models[model_id] = pipe
+        logger.info(f"Model {model_id} loaded successfully")
+        return pipe
+
+    except Exception as e:
+        logger.error(f"Error loading model {model_id}: {str(e)}")
+        raise
 
 @app.get("/")
 async def root():
@@ -71,9 +102,18 @@ async def root():
 @app.post("/generate")
 async def generate_image(request: ImageGenerationRequest, background_tasks: BackgroundTasks):
     try:
-        # Ensure model is loaded
-        if pipe is None:
-            load_model()
+        # Load the specified model or default
+        current_pipe = load_model(request.model)
+
+        # Apply model-specific trigger words if available
+        if request.model:
+            trigger_words = get_model_trigger_words(request.model)
+            if trigger_words:
+                # Only add trigger words if they're not already in the prompt
+                for word in trigger_words:
+                    if word.lower() not in request.prompt.lower():
+                        request.prompt = f"{word}, {request.prompt}"
+                        logger.info(f"Added model trigger word: {word}")
 
         logger.info(f"Generating image with prompt: {request.prompt}")
 
@@ -91,7 +131,7 @@ async def generate_image(request: ImageGenerationRequest, background_tasks: Back
             torch.cuda.empty_cache()  # Clear GPU memory
 
         # Generate the image
-        image = pipe(
+        image = current_pipe(
             prompt=request.prompt,
             negative_prompt=request.negative_prompt,
             width=request.width,
@@ -119,10 +159,10 @@ async def generate_image(request: ImageGenerationRequest, background_tasks: Back
 
 @app.on_event("startup")
 def startup_event():
-    # Background load model on startup
+    # Background load the default model on startup
     # We do this in a background task to avoid slowing down app startup
     background_tasks = BackgroundTasks()
-    background_tasks.add_task(load_model)
+    background_tasks.add_task(load_model, None)
 
 if __name__ == "__main__":
     import uvicorn

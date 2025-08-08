@@ -47,6 +47,7 @@ The API will be available at http://localhost:8000
 ## API Endpoints
 
 - `GET /` - Health check
+- `GET /models` - Get a list of available Stable Diffusion models
 - `POST /generate` - Generate an image based on a text prompt
 
 ### Example Request

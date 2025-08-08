@@ -23,10 +23,6 @@ def get_device() -> str:
 
     return "cpu"
 
-def get_model_id() -> str:
-    """Get the model ID from environment variables or use default."""
-    return os.environ.get("MODEL_ID", "runwayml/stable-diffusion-v1-5")
-
 def setup_seed(seed: Optional[int] = None, device: str = "cuda") -> Optional[Generator]:
     """Set up a generator with a seed for reproducible image generation."""
     if seed is not None:
