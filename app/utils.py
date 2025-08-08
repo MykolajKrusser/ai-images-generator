@@ -5,8 +5,22 @@ from PIL import Image
 
 def get_device() -> str:
     """Determine the appropriate device to run inference on."""
-    if os.environ.get("USE_GPU", "1") == "1" and torch.cuda.is_available():
+    use_gpu_setting = os.environ.get("USE_GPU", "1")
+    cuda_available = torch.cuda.is_available()
+
+    print(f"GPU Setting: USE_GPU={use_gpu_setting}, CUDA Available: {cuda_available}")
+    if use_gpu_setting == "1" and cuda_available:
+        # If CUDA is available, log GPU information
+        if cuda_available:
+            print(f"GPU detected: {torch.cuda.get_device_name(0)}")
+            print(f"CUDA Version: {torch.version.cuda}")
         return "cuda"
+
+    if not cuda_available:
+        print("No CUDA-compatible GPU detected. Running on CPU.")
+    elif use_gpu_setting != "1":
+        print("GPU usage disabled by USE_GPU environment variable. Running on CPU.")
+
     return "cpu"
 
 def get_model_id() -> str:
@@ -37,6 +51,7 @@ def resize_image(image: Image.Image, max_size: int = 1024) -> Image.Image:
 
 
 def optimize_vae_encode_decode(pipe, device: str):
+    """Optimize VAE encode/decode functions for better performance."""
     if device == "cuda":
         # Move VAE to CPU during encode/decode to save VRAM
         # This is beneficial for larger images
